@@ -6,6 +6,8 @@ const errorController = require('./controllers/error');
 const authRoutes = require('./routes/auth.routes');
 const machineRoutes = require('./routes/machine.routes');
 const linesRoutes = require('./routes/line.routes');
+const sensorRoutes = require('./routes/sensor.routes');
+const readingRoutes = require('./routes/reading.routes');
 const connectDB = require('./database/connectDB');
 const dotenv = require('dotenv');
 const cookieParser = require('cookie-parser');
@@ -34,6 +36,8 @@ app.use(cookieParser());
 app.use('/api/auth', authRoutes);
 app.use('/api/lines', linesRoutes);
 app.use('/api/machines', machineRoutes);
+app.use('/api/sensors', sensorRoutes);
+app.use('/api/readings', readingRoutes);
 
 app.use(errorController.get404);
 
