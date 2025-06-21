@@ -1,6 +1,6 @@
 const bodyParser = require('body-parser');
 const express = require('express');
-const { createServer } = require('http');
+const https = require('https');
 
 const errorController = require('./controllers/error');
 const authRoutes = require('./routes/auth.routes');
@@ -12,13 +12,18 @@ const connectDB = require('./database/connectDB');
 const dotenv = require('dotenv');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
+const fs = require("fs");
 
 dotenv.config();
 
 const PORT = process.env.PORT;
 
 const app = express();
-const server = createServer(app);
+const options = {
+    key: fs.readFileSync("server.key"),
+    cert: fs.readFileSync("server.cert"),
+};
+const server = https.createServer(options, app);
 
 
 app.use(cors({
