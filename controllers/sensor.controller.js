@@ -4,7 +4,16 @@ const Sensor = require('../models/sensor.model');
 exports.getAllSensors = async (req, res) => {
     try {
         const sensors = await Sensor.find();
-        res.json(sensors);
+        res.status(200).json(sensors);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+exports.getSensorsByMachine = async (req, res) => {
+    try {
+        const sensors = await Sensor.find({ machineId: req.params.machineId });
+        res.status(200).json(sensors);
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
@@ -26,7 +35,7 @@ exports.createSensor = async (req, res) => {
     const sensor = new Sensor(req.body);
     try {
         const newSensor = await sensor.save();
-        res.status(201).json(newSensor);
+        res.status(201).json({newSensor});
     } catch (err) {
         res.status(400).json({ message: err.message });
     }

@@ -28,12 +28,12 @@ const server = https.createServer(options, app);
 
 app.use(cors({
     origin: 'http://localhost:5173',
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
 }));
 
-app.options('*', cors());
+// app.options('*', cors());
 
 app.use(bodyParser.json());
 app.use(cookieParser());
