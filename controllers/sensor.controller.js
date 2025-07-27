@@ -10,9 +10,9 @@ exports.getAllSensors = async (req, res) => {
     }
 };
 
-exports.getSensorsByMachine = async (req, res) => {
+exports.getSensorsByMachine = async (req, res) => { 
     try {
-        const sensors = await Sensor.find({ machineId: req.params.machineId });
+        const sensors = await Sensor.find({ machine: req.params.machineId });
         res.status(200).json(sensors);
     } catch (err) {
         res.status(500).json({ message: err.message });

@@ -1,5 +1,6 @@
 const Machine = require('../models/machine.model');
 const Line = require('../models/line.model');
+let converter = require('json-2-csv');
 
 // Add a machine to a line
 exports.addMachineToLine = async (req, res) => {
@@ -148,6 +149,43 @@ exports.getUserMachines = async (req, res) => {
         });
     } catch (error) {
         console.error("Error while fetching user's machines:", error);
+        res.status(500).json({ error: "Internal server error." });
+    }
+};
+
+exports.getMachineReport = async (req, res) => {
+    try {
+        const { id, start, end } = req.query;
+        const machine = await Machine.findById(id);
+        if (!machine) {
+            return res.status(404).json({ error: "Machine not found." });
+        }
+
+        const dates = [];
+        const currentDate = new Date(start);
+        const endDate = new Date(end);
+
+        while (currentDate <= endDate) {
+            dates.push(new Date(currentDate).toISOString().split("T")[0]);
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+
+        const mockData = dates.map(date => ({
+            date,
+            consumption: Math.floor(Math.random() * 100) + 1,
+        }));
+
+        const csvData = await converter.json2csv(mockData, { emptyFieldValue: 'N/A' });
+
+        res.setHeader("Content-Type", "text/csv");
+        res.setHeader(
+            "Content-Disposition",
+            `attachment; filename=machine_${id}_report.csv`
+        );
+        res.status(200).send(csvData);
+
+    } catch (error) {
+        console.error("Error while generating machine report:", error);
         res.status(500).json({ error: "Internal server error." });
     }
 };

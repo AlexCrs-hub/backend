@@ -18,4 +18,7 @@ router.delete('/:id', isAuth.verifyToken, sensorController.deleteSensor);
 // Get a single sensor by ID
 router.get('/:id', isAuth.verifyToken, sensorController.getSensorById);
 
+// Get sensors by machine ID
+router.get('/machine/:machineId', isAuth.verifyToken, sensorController.getSensorsByMachine);
+
 module.exports = router;

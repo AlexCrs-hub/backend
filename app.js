@@ -1,6 +1,7 @@
 const bodyParser = require('body-parser');
 const express = require('express');
 const https = require('https');
+const { createServer } = require('http');
 
 const errorController = require('./controllers/error');
 const authRoutes = require('./routes/auth.routes');
@@ -19,12 +20,15 @@ dotenv.config();
 const PORT = process.env.PORT;
 
 const app = express();
-const options = {
-    key: fs.readFileSync("server.key"),
-    cert: fs.readFileSync("server.cert"),
-};
-const server = https.createServer(options, app);
+// Uncomment the following lines to use HTTPS
+// const options = {
+//     key: fs.readFileSync("server.key"),
+//     cert: fs.readFileSync("server.cert"),
+// };
+// const server = https.createServer(options, app);
 
+// For development, use HTTP server
+const server = createServer(app);
 
 app.use(cors({
     origin: 'http://localhost:5173',
@@ -33,7 +37,8 @@ app.use(cors({
     credentials: true
 }));
 
-// app.options('*', cors());
+//Comment this when using https
+app.options('*', cors());
 
 app.use(bodyParser.json());
 app.use(cookieParser());

@@ -15,7 +15,7 @@ exports.getAllReadings = async (req, res) => {
 exports.createReading = async (req, res) => {
     const reading = new Reading(req.body);
     try {
-        const { sensorName, measurement } = req.body;
+        const { sensorName, measurement, measuredAt } = req.body;
 
         // Find the sensor by name
         const sensor = await Sensor.findOne({ name: sensorName });
@@ -26,7 +26,8 @@ exports.createReading = async (req, res) => {
         // Create the reading with the sensor's id
         const reading = new Reading({
             sensor: sensor._id,
-            measurement
+            measurement,
+            measuredAt: measuredAt ? new Date(measuredAt) : new Date()
         });
 
         const newReading = await reading.save();
