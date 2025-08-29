@@ -171,11 +171,23 @@ exports.getMachineReport = async (req, res) => {
         }
 
         const mockData = dates.map(date => ({
-            date,
-            consumption: Math.floor(Math.random() * 100) + 1,
+            "Date": date,
+            'Consumption (kW)': Math.floor(Math.random() * 100) + 1,
         }));
 
-        const csvData = await converter.json2csv(mockData, { emptyFieldValue: 'N/A' });
+        mockData.push({
+            "Date": '',
+            'Consumption (kW)': '',
+        });
+
+        const totalConsumption = mockData.reduce((sum, entry) => sum + entry['Consumption (kW)'], 0);
+
+        mockData.push({
+            "Date": 'Total',
+            'Consumption (kW)': totalConsumption,
+        });
+
+        const csvData = await converter.json2csv(mockData, { emptyFieldValue: '' });
 
         res.setHeader("Content-Type", "text/csv");
         res.setHeader(
