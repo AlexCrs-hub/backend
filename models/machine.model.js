@@ -9,7 +9,7 @@ const machineSchema = new Schema({
     lineId: {
         type: Schema.Types.ObjectId,
         ref: 'Line',
-        required: true
+        required: false
     }
 });
 

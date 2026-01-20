@@ -12,6 +12,8 @@ const sensorSchema = new Schema({
         ref: 'Machine',
         required: true
     },
+    unit: { type: String, default: 'kW', required: true }, // for clarity
+    maxValue: { type: Number, required: true }, // max possible power
 });
 
 module.exports = mongoose.model('Sensor', sensorSchema);
