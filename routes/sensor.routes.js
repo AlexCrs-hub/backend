@@ -7,6 +7,9 @@ const router = express.Router();
 // Get all sensors
 router.get('/', isAuth.verifyToken, sensorController.getAllSensors);
 
+//get by name 
+router.get('/by-name', sensorController.getSensorByName);
+
 // Create a new sensor
 router.post('/', isAuth.verifyToken, sensorController.createSensor);
 

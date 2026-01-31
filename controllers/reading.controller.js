@@ -16,7 +16,7 @@ exports.createReading = async (req, res) => {
     const reading = new Reading(req.body);
     try {
         const { sensorName, measurement, measuredAt } = req.body;
-
+        console.log(req.body);
         // Find the sensor by name
         const sensor = await Sensor.findOne({ name: sensorName });
         if (!sensor) {

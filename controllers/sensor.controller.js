@@ -30,6 +30,25 @@ exports.getSensorById = async (req, res) => {
     }
 };
 
+//get sensor by sensor name
+exports.getSensorByName = async (req, res) => {
+    try {
+        const { name } = req.query; // read the query parameter ?name=XYZ
+        if (!name) {
+            return res.status(400).json({ message: "Query parameter 'name' is required" });
+        }
+
+        const sensor = await Sensor.findOne({ name });
+        if (!sensor) {
+            return res.status(404).json({ message: 'Sensor not found' });
+        }
+
+        res.status(200).json(sensor);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
 // Create a new sensor
 exports.createSensor = async (req, res) => {
     const sensor = new Sensor(req.body);
