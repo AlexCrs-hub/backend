@@ -39,6 +39,38 @@ exports.addMachineToLine = async (req, res) => {
     }
 };
 
+exports.addMachine = async (req, res) => {
+    try {
+        const { name, max_power, user_id } = req.body;
+
+         if (!user_id) {
+            return res.status(400).json({ error: "User ID is required." });
+        }
+
+        if (!name) {
+            return res.status(400).json({ error: "Machine name is required." });
+        }
+
+        if (!max_power) {
+            return res.status(400).json({ error: "Max power consumption is required." });
+        }
+
+        const existingMachine = await Machine.findOne({ name, user_id });
+        if (existingMachine) {
+            return res.status(409).json({ error: "A machine with this name already exists for the user." });
+        }
+
+        const machine = new Machine({ name, maxPowerConsumption: max_power, userId: user_id });
+        await machine.save();
+
+        res.status(201).json({ message: "Machine added successfully.", machine });
+
+    } catch (error) {
+        console.error("Error while adding machine:", error);
+        res.status(500).json({ error: "Internal server error." });
+    }
+};
+
 exports.getMachinesByLine = async (req, res) => {
     try {
         const { lineId } = req.params;
@@ -127,19 +159,10 @@ exports.deleteMachine = async (req, res) => {
 exports.getUserMachines = async (req, res) => {
     try {
         const userId = req.userId;
-        const userLines = await Line
-            .find({ userId })
-            .select('_id');
 
-        if (userLines.length === 0) {
-            return res.status(404).json({ message: "The user has no production lines." });
-        }
+        const machines = await Machine.find({ userId });
 
-        const lineIds = userLines.map(line => line._id);
-
-        const machines = await Machine.find({ lineId: { $in: lineIds } });
-
-        if (machines.length === 0) {
+        if (!machines || machines.length === 0) {
             return res.status(404).json({ message: "The user has no machines." });
         }
 

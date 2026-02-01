@@ -5,6 +5,7 @@ const isAuth = require('../middlewares/verifyToken');
 const router = express.Router();
 
 router.post('/line/:lineId',isAuth.verifyToken, machineController.addMachineToLine);
+router.post('/',isAuth.verifyToken, machineController.addMachine);
 router.get('/line/:lineId',isAuth.verifyToken, machineController.getMachinesByLine);
 router.get('/report', isAuth.verifyToken, machineController.getMachineReport);
 router.get('/:id',isAuth.verifyToken, machineController.getMachineById);
