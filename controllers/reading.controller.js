@@ -14,7 +14,6 @@ exports.getAllReadings = async (req, res) => {
 // Create a new reading
 exports.createReading = async (req, res) => {
     const machineId = req.params.machineId;
-    
     try {
         const { sensorName, measurement, measuredAt } = req.body;
 
