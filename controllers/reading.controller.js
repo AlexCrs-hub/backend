@@ -13,12 +13,14 @@ exports.getAllReadings = async (req, res) => {
 
 // Create a new reading
 exports.createReading = async (req, res) => {
-    const reading = new Reading(req.body);
+    const machineId = req.params.machineId;
+    
     try {
         const { sensorName, measurement, measuredAt } = req.body;
-        console.log(req.body);
-        // Find the sensor by name
-        const sensor = await Sensor.findOne({ name: sensorName });
+
+        // Find the sensor by name and machineId
+        const sensor = await Sensor.findOne({ name: sensorName, machine: machineId });
+
         if (!sensor) {
             return res.status(404).json({ message: 'Sensor not found' });
         }

@@ -8,6 +8,7 @@ router.post('/line/:lineId',isAuth.verifyToken, machineController.addMachineToLi
 router.post('/',isAuth.verifyToken, machineController.addMachine);
 router.get('/line/:lineId',isAuth.verifyToken, machineController.getMachinesByLine);
 router.get('/report', isAuth.verifyToken, machineController.getMachineReport);
+router.get('/name/:name', machineController.getMachineByName);
 router.get('/:id',isAuth.verifyToken, machineController.getMachineById);
 router.put('/:id',isAuth.verifyToken, machineController.updateMachineById);
 router.delete('/:id',isAuth.verifyToken, machineController.deleteMachine);

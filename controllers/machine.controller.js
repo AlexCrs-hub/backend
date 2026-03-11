@@ -114,6 +114,27 @@ exports.getMachineById = async (req, res) => {
     }
 };
 
+exports.getMachineByName = async (req, res) => {
+    
+    try {
+        const { name } = req.params;
+        const machine = await Machine.findOne({ name });
+    
+        if (!machine) {
+            return res.status(404).json({ error: "Machine not found." });
+        }
+        
+        res.status(200).json({
+            message: "Machine found.",
+            machine
+        });
+
+    } catch (error) {
+        console.error("Error while fetching machine:", error);
+        res.status(500).json({ error: "Internal server error." });
+    }
+};
+
 exports.updateMachineById = async (req, res) => {
     try {
         const { id } = req.params;

@@ -11,7 +11,7 @@ router.get('/', isAuth.verifyToken, sensorController.getAllSensors);
 router.get('/by-name', sensorController.getSensorByName);
 
 // Create a new sensor
-router.post('/', isAuth.verifyToken, sensorController.createSensor);
+router.post('/', sensorController.createSensor);
 
 // Update a sensor
 router.put('/:id', isAuth.verifyToken, sensorController.updateSensor);
@@ -22,6 +22,6 @@ router.delete('/:id', isAuth.verifyToken, sensorController.deleteSensor);
 router.get('/:id', isAuth.verifyToken, sensorController.getSensorById);
 
 // Get sensors by machine ID
-router.get('/machine/:machineId', isAuth.verifyToken, sensorController.getSensorsByMachine);
+router.get('/machine/:machineId', sensorController.getSensorsByMachine);
 
 module.exports = router;
