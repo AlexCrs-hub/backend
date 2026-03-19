@@ -2,6 +2,7 @@ const express = require('express');
 const sensorController = require('../controllers/sensor.controller');
 const isAuth = require('../middlewares/verifyToken');
 const serviceAuth = require('../middlewares/serviceAuth');
+const eitherAuth = require('../middlewares/eitherAuth');
 
 const router = express.Router();
 
@@ -19,10 +20,11 @@ router.put('/:id', isAuth.verifyToken, sensorController.updateSensor);
 
 // Delete a sensor
 router.delete('/:id', isAuth.verifyToken, sensorController.deleteSensor);
+
 // Get a single sensor by ID
 router.get('/:id', isAuth.verifyToken, sensorController.getSensorById);
 
 // Get sensors by machine ID
-router.get('/machine/:machineId', serviceAuth.verifyServiceKey, sensorController.getSensorsByMachine);
+router.get('/machine/:machineId', eitherAuth.eitherAuth, sensorController.getSensorsByMachine);
 
 module.exports = router;

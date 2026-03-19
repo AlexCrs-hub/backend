@@ -18,3 +18,15 @@ exports.verifyServiceKey = (req, res, next) => {
 
   next();
 };
+
+exports.verifyServiceKeySilent = (req) => {
+  const apiKey = req.headers['x-api-key'];
+
+  if (!apiKey) throw new Error('No API key');
+
+  const hashedKey = hashKey(apiKey);
+  
+  if (hashedKey !== process.env.SERVICE_API_KEY_HASH) throw new Error('Invalid API key');
+
+  req.isService = true;
+};

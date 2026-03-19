@@ -16,3 +16,15 @@ exports.verifyToken = (req, res, next) => {
         return res.status(401).json({ message: 'You need to Login' });
     }
 };
+
+exports.verifyTokenSilent = (req) => {
+    const token = req.cookies.token;
+    
+    if (!token) throw new Error('No token');
+    
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    if (!decoded) throw new Error('Invalid token');
+  
+    req.userId = decoded.userId;
+};
