@@ -38,6 +38,27 @@ exports.createReading = async (req, res) => {
     }
 };
 
+exports.getReadingsLast24Hours = async (req, res) => {
+    try {
+        const sensorId = req.params.sensorId;
+        const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+        const readings = await Reading.find({ sensor: sensorId, measuredAt: { $gte: since } })
+            .sort({ measuredAt: 1 });
+
+        res.json({
+            sensorId,
+            readings: readings.map((r) => ({
+                readingId: r._id,
+                measurement: r.measurement,
+                measuredAt: r.measuredAt
+            }))
+        });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
 // Get all readings for a specific sensor
 exports.getReadingsBySensor = async (req, res) => {
     try {

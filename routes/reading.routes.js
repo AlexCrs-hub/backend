@@ -6,6 +6,7 @@ const serviceAuth = require('../middlewares/serviceAuth');
 const router = express.Router();
 
 router.get('/', isAuth.verifyToken, readingController.getAllReadings);
+router.get('/:sensorId/last24h', isAuth.verifyToken, readingController.getReadingsLast24Hours);
 router.post('/:machineId', serviceAuth.verifyServiceKey, readingController.createReading);
 router.get('/:sensorId', isAuth.verifyToken, readingController.getReadingsBySensor);
 
