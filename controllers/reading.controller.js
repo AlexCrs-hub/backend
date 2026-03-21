@@ -46,14 +46,7 @@ exports.getReadingsLast24Hours = async (req, res) => {
         const readings = await Reading.find({ sensor: sensorId, measuredAt: { $gte: since } })
             .sort({ measuredAt: 1 });
 
-        res.json({
-            sensorId,
-            readings: readings.map((r) => ({
-                readingId: r._id,
-                measurement: r.measurement,
-                measuredAt: r.measuredAt
-            }))
-        });
+        res.json(readings);
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
