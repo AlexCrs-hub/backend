@@ -62,3 +62,56 @@ exports.getReadingsBySensor = async (req, res) => {
         res.status(500).json({ message: err.message });
     }
 };
+
+exports.getDailyConsumptionLast7Days = async (req, res) => {
+    try {
+        const sensorId = req.params.sensorId;
+
+        // Find the sensor and check if its unit is kW
+        const sensor = await Sensor.findById(sensorId);
+        if (!sensor) {
+            return res.status(404).json({ message: 'Sensor not found' });
+        }
+        if (sensor.unit !== 'kW') {
+            return res.status(400).json({ message: 'Sensor unit is not kW' });
+        }
+
+        // Build the last 7 days array (starting from 6 days ago up to today)
+        const days = [];
+        for (let i = 6; i >= 0; i--) {
+            const date = new Date();
+            date.setDate(date.getDate() - i);
+            days.push(date);
+        }
+
+        // Fetch readings for the last 7 days
+        const since = new Date(days[0]);
+        since.setHours(0, 0, 0, 0);
+        const readings = await Reading.find({
+            sensor: sensorId,
+            measuredAt: { $gte: since }
+        }).sort({ measuredAt: 1 });
+
+        // Group readings by day and sum measurements
+        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const kwData = days.map(day => {
+            const dayStart = new Date(day);
+            dayStart.setHours(0, 0, 0, 0);
+            const dayEnd = new Date(day);
+            dayEnd.setHours(23, 59, 59, 999);
+
+            const dailyTotal = readings
+                .filter(r => r.measuredAt >= dayStart && r.measuredAt <= dayEnd)
+                .reduce((sum, r) => sum + r.measurement, 0);
+
+            return {
+                name: dayNames[day.getDay()],
+                kw: dailyTotal
+            };
+        });
+
+        res.json(kwData);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
