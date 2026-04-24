@@ -16,6 +16,11 @@ const userSchema = new Schema({
         type: String,
         required: true
     },
+    role: {
+        type: String,
+        enum: ['admin', 'operator', 'maintenance'],
+        default: 'maintenance'
+    },
     lastLogin: {
         type: Date,
         default: Date.now()

@@ -95,7 +95,7 @@ exports.login = async (req, res) => {
             return res.status(400).json({success: false, message: 'Invalid email or password.' });
         }
 
-        generateTokenAndSetCookie(res, user._id);
+        generateTokenAndSetCookie(res, user._id, user.role);
 
         user.lastLogin = Date.now();
         await user.save();
@@ -105,7 +105,7 @@ exports.login = async (req, res) => {
             message: 'User logged in successfully.',
             user: {
                 ...user._doc,
-                password: undefined
+                role: user.role
             }
         });
     } catch (error) {

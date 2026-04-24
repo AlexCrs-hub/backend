@@ -1,8 +1,7 @@
-const { truncates } = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
-exports.generateTokenAndSetCookie = (res, userId) => {
-    const token = jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
+exports.generateTokenAndSetCookie = (res, userId, role) => {
+    const token = jwt.sign({ userId, role }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
     res.cookie('token', token, {
         secure: true,
