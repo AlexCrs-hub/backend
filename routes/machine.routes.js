@@ -14,5 +14,6 @@ router.get('/:id',isAuth.verifyToken, machineController.getMachineById);
 router.put('/:id',isAuth.verifyToken, machineController.updateMachineById);
 router.delete('/:id', isAuth.verifyToken, machineController.deleteMachine);
 router.get('/', isAuth.verifyToken, machineController.getUserMachines);
+router.get('/runtime/:id', serviceAuth.verifyServiceKey, machineController.getMachineRuntimeConfig);
 
 module.exports = router;

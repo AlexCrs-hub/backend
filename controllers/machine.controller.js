@@ -245,3 +245,37 @@ exports.getMachineReport = async (req, res) => {
         res.status(500).json({ error: "Internal server error." });
     }
 };
+
+
+exports.getMachineRuntimeConfig = async (req, res) => {
+    try {
+
+        const { id } = req.params;
+
+        const machine = await Machine.findById(id)
+            .select('_id maxPowerConsumption downtimeThreshold');
+
+        if (!machine) {
+            return res.status(404).json({
+                error: 'Machine not found.'
+            });
+        }
+
+        res.status(200).json({
+            machineId: machine._id,
+            maxPowerConsumption: machine.maxPowerConsumption,
+            downtimeThreshold: machine.downtimeThreshold
+        });
+
+    } catch (error) {
+
+        console.error(
+            'Error fetching machine runtime config:',
+            error
+        );
+
+        res.status(500).json({
+            error: 'Internal server error.'
+        });
+    }
+};
