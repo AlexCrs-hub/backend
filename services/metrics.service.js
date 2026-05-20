@@ -132,4 +132,145 @@ const getTotalDowntime = async (machineId, period) => {
     }
 };
 
-module.exports = { getTotalDowntime, getCycleCount };
+const getUtilisation = async (machineId, period) => {
+    try {
+        const machine = await Machine.findById(machineId);
+        if (!machine) throw new Error('Machine not found');
+
+        const sensor = await Sensor.findOne({ machine: machineId, unit: 'kW' });
+        if (!sensor) throw new Error('No kW sensor found for this machine');
+
+        const { start, end } = getDateRange(period);
+
+        const readings = await Reading.find({
+            sensor: sensor._id,
+            measuredAt: { $gte: start, $lte: end }
+        }).sort({ measuredAt: 1 });
+
+        if (readings.length < 2) {
+            return { utilizationPercentage: 0, period, machineId };
+        }
+
+        let activeMs = 0;
+
+        for (let i = 0; i < readings.length - 1; i++) {
+            const current = readings[i];
+            const next = readings[i + 1];
+            const isActive = current.measurement > machine.downtimeThreshold;
+
+            if (isActive) {
+                activeMs += new Date(next.measuredAt) - new Date(current.measuredAt);
+            }
+        }
+
+        const totalMs = end - start;
+        const utilizationPercentage = parseFloat(((activeMs / totalMs) * 100).toFixed(2));
+
+        return { utilizationPercentage, period, machineId };
+
+    } catch (err) {
+        console.error('getUtilization error:', err.message);
+        throw err;
+    }
+}
+
+const findValleyThreshold = (values, min, max, numBins = 50) => {
+    const binSize = (max - min) / numBins;
+    const histogram = new Array(numBins).fill(0);
+
+    values.forEach(v => {
+        const bin = Math.min(Math.floor((v - min) / binSize), numBins - 1);
+        histogram[bin]++;
+    });
+
+    let firstPeakBin = 0;
+    let secondPeakBin = 0;
+
+    for (let i = 0; i < numBins; i++) {
+        if (histogram[i] > histogram[firstPeakBin]) {
+            secondPeakBin = firstPeakBin;
+            firstPeakBin = i;
+        } else if (histogram[i] > histogram[secondPeakBin] && i !== firstPeakBin) {
+            secondPeakBin = i;
+        }
+    }
+
+    const lowerPeak = Math.min(firstPeakBin, secondPeakBin);
+    const upperPeak = Math.max(firstPeakBin, secondPeakBin);
+
+    let valleyBin = lowerPeak;
+    for (let i = lowerPeak; i <= upperPeak; i++) {
+        if (histogram[i] < histogram[valleyBin]) {
+            valleyBin = i;
+        }
+    }
+
+    return min + (valleyBin * binSize) + (binSize / 2);
+}
+
+const getCuttingAndIdleTime = async (machineId, period) => {
+    try{
+        const machine = await Machine.findById(machineId);
+        if(!machine) throw new Error('Machine not found');
+
+        const sensor = await Sensor.findOne({ machine: machineId, unit: 'kW' });
+        if(!sensor) throw new Error('Power sensor not found for this machine');
+
+        const {start, end} = getDateRange(period);
+
+        const readings = await Reading.find({
+            sensor: sensor._id,
+            measuredAt: { $gte: start, $lte: end }
+        }).sort({ measuredAt: 1 });
+
+        if(readings.length < 2) {
+            return { cuttingHours: 0, idleHours: 0, period, machineId };
+        }
+
+        const activeReadings = readings.filter(r => r.measurement > machine.downtimeThreshold);
+
+        if(activeReadings.length < 2) {
+            return { cuttingHours: 0, idleHours: 0, period, machineId };
+        }
+
+        const values = activeReadings.map(r => r.measurement);
+        const minVal = machine.downtimeThreshold;
+        const maxVal = machine.maxPowerConsumption || Math.max(...values);
+
+        const cuttingThreshold = findValleyThreshold(values, minVal, maxVal);
+        console.log(`Dynamic cutting threshold for machine ${machineId}: ${cuttingThreshold}`);
+
+        let cuttingMs = 0;
+        let idleMs = 0;
+
+        for (let i = 0; i < readings.length - 1; i++) {
+            const current = readings[i];
+            const next = readings[i + 1];
+            const intervalMs = new Date(next.measuredAt) - new Date(current.measuredAt);
+
+            if (current.measurement <= machine.downtimeThreshold) continue; // skip downtime
+
+            if (current.measurement >= cuttingThreshold) {
+                cuttingMs += intervalMs;
+            } else {
+                idleMs += intervalMs;
+            }
+        }
+
+        const cuttingHours = parseFloat((cuttingMs / 1000 / 60 / 60).toFixed(2));
+        const idleHours = parseFloat((idleMs / 1000 / 60 / 60).toFixed(2));
+
+        return {
+            cuttingHours,
+            idleHours,
+            cuttingThreshold: parseFloat(cuttingThreshold.toFixed(2)),
+            period,
+            machineId
+        };
+    } catch (err) {
+        console.error('getCuttingAndIdleTime error:', err.message);
+        throw err;
+    }
+}
+
+module.exports = { getTotalDowntime, getCycleCount, getUtilisation, getCuttingAndIdleTime };
