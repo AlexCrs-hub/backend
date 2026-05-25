@@ -20,7 +20,7 @@ exports.getDowntime = async (req, res) => {
     }
 };
 
-exports.getUtilization = async (req, res) => {
+exports.getUtilisation = async (req, res) => {
     try {
         const { machineId, period } = req.params;
         const result = await getUtilisation(machineId, period);

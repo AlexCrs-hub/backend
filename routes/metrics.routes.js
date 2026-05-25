@@ -5,7 +5,7 @@ const metricsController = require('../controllers/metrics.controller');
 
 router.get('/cycles/:machineId/:period', isAuth.verifyToken, metricsController.getCycles);
 router.get('/downtime/:machineId/:period', isAuth.verifyToken, metricsController.getDowntime);
-router.get('/utilization/:machineId/:period', isAuth.verifyToken, metricsController.getUtilization);
+router.get('/utilization/:machineId/:period', isAuth.verifyToken, metricsController.getUtilisation);
 router.get('/cutting/:machineId/:period', isAuth.verifyToken, metricsController.getCuttingTime);
 router.get('/planned-unplanned/:machineId/:period', isAuth.verifyToken, metricsController.getPlannedUnplannedDowntime);
 
