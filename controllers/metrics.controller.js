@@ -1,4 +1,4 @@
-const { getTotalDowntime, getCycleCount } = require('../services/metrics.service');
+const { getTotalDowntime, getCycleCount, getUtilisation, getCuttingTime, getPlannedUnplannedDowntime } = require('../services/metrics.service');
 
 exports.getCycles = async (req, res) => {
     try {
@@ -23,17 +23,27 @@ exports.getDowntime = async (req, res) => {
 exports.getUtilization = async (req, res) => {
     try {
         const { machineId, period } = req.params;
-        const result = await getUtilization(machineId, period);
+        const result = await getUtilisation(machineId, period);
         res.json(result);
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
 };
 
-exports.getCuttingAndIdleTime = async (req, res) => {
+exports.getCuttingTime = async (req, res) => {
     try {
         const { machineId, period } = req.params;
-        const result = await getCuttingAndIdleTime(machineId, period);
+        const result = await getCuttingTime(machineId, period);
+        res.json(result);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+exports.getPlannedUnplannedDowntime = async (req, res) => {
+    try {
+        const { machineId, period } = req.params;
+        const result = await getPlannedUnplannedDowntime(machineId, period);
         res.json(result);
     } catch (err) {
         res.status(500).json({ message: err.message });

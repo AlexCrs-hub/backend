@@ -1,17 +1,19 @@
 const Reading = require('../models/reading.model');
 const Sensor = require('../models/sensor.model');
 const Machine = require('../models/machine.model');
+const ThresholdRecord = require('../models/thresholdRecord.model');
+const { PERIODS, DOWNTIME_TYPES } = require('../utils/enums');
 
 const getDateRange = (period) => {
     const now = new Date();
     const start = new Date();
 
-    if (period === 'day') {
+    if (period === PERIODS.DAY) {
         start.setHours(0, 0, 0, 0);
-    } else if (period === 'week') {
+    } else if (period === PERIODS.WEEK) {
         start.setDate(now.getDate() - 7);
         start.setHours(0, 0, 0, 0);
-    } else if (period === 'month') {
+    } else if (period === PERIODS.MONTH) {
         start.setMonth(now.getMonth() - 1);
         start.setHours(0, 0, 0, 0);
     } else {
@@ -174,7 +176,7 @@ const getUtilisation = async (machineId, period) => {
     }
 }
 
-const findValleyThreshold = (values, min, max, numBins = 50) => {
+const analyzeSignal = (values, min, max, numBins = 50) => {
     const binSize = (max - min) / numBins;
     const histogram = new Array(numBins).fill(0);
 
@@ -183,6 +185,7 @@ const findValleyThreshold = (values, min, max, numBins = 50) => {
         histogram[bin]++;
     });
 
+    // Find two peaks
     let firstPeakBin = 0;
     let secondPeakBin = 0;
 
@@ -205,10 +208,16 @@ const findValleyThreshold = (values, min, max, numBins = 50) => {
         }
     }
 
-    return min + (valleyBin * binSize) + (binSize / 2);
-}
+    const cuttingThreshold = min + (valleyBin * binSize) + (binSize / 2);
+    const downtimeThreshold = min + (lowerPeak * binSize) + (binSize / 2);
 
-const getCuttingAndIdleTime = async (machineId, period) => {
+    return {
+        cuttingThreshold,
+        downtimeThreshold
+    };
+};
+
+const getCuttingTime = async (machineId, period) => {
     try{
         const machine = await Machine.findById(machineId);
         if(!machine) throw new Error('Machine not found');
@@ -234,35 +243,52 @@ const getCuttingAndIdleTime = async (machineId, period) => {
         }
 
         const values = activeReadings.map(r => r.measurement);
-        const minVal = machine.downtimeThreshold;
-        const maxVal = machine.maxPowerConsumption || Math.max(...values);
 
-        const cuttingThreshold = findValleyThreshold(values, minVal, maxVal);
+        const { cuttingThreshold, downtimeThreshold: detectedDowntimeThreshold } = analyzeSignal(
+            values, 
+            machine.downtimeThreshold, 
+            machine.maxPowerConsumption
+        );
+
+        const cuttingChanged = Math.abs(cuttingThreshold - (machine.cuttingThreshold || cuttingThreshold)) 
+            / cuttingThreshold > 0.05;
+
+        const downtimeChanged = Math.abs(detectedDowntimeThreshold - machine.downtimeThreshold) 
+            / machine.downtimeThreshold > 0.10;
+
+        if (cuttingChanged || downtimeChanged) {
+            await ThresholdRecord.create({
+                machine: machineId,
+                cuttingThreshold: parseFloat(cuttingThreshold.toFixed(2)),
+                downtimeThreshold: parseFloat(detectedDowntimeThreshold.toFixed(2))
+            });
+
+            await Machine.findByIdAndUpdate(machineId, {
+                ...(downtimeChanged && { downtimeThreshold: parseFloat(detectedDowntimeThreshold.toFixed(2)) }),
+                ...(cuttingChanged && { cuttingThreshold: parseFloat(cuttingThreshold.toFixed(2)) })
+            });
+        }
+
         console.log(`Dynamic cutting threshold for machine ${machineId}: ${cuttingThreshold}`);
 
         let cuttingMs = 0;
-        let idleMs = 0;
 
         for (let i = 0; i < readings.length - 1; i++) {
             const current = readings[i];
             const next = readings[i + 1];
-            const intervalMs = new Date(next.measuredAt) - new Date(current.measuredAt);
-
-            if (current.measurement <= machine.downtimeThreshold) continue; // skip downtime
 
             if (current.measurement >= cuttingThreshold) {
-                cuttingMs += intervalMs;
-            } else {
-                idleMs += intervalMs;
+                cuttingMs += new Date(next.measuredAt) - new Date(current.measuredAt);
             }
         }
 
+        const totalMs = end - start;
         const cuttingHours = parseFloat((cuttingMs / 1000 / 60 / 60).toFixed(2));
-        const idleHours = parseFloat((idleMs / 1000 / 60 / 60).toFixed(2));
+        const cuttingPercentage = parseFloat(((cuttingMs / totalMs) * 100).toFixed(2));
 
         return {
             cuttingHours,
-            idleHours,
+            cuttingPercentage,
             cuttingThreshold: parseFloat(cuttingThreshold.toFixed(2)),
             period,
             machineId
@@ -273,4 +299,50 @@ const getCuttingAndIdleTime = async (machineId, period) => {
     }
 }
 
-module.exports = { getTotalDowntime, getCycleCount, getUtilisation, getCuttingAndIdleTime };
+const getPlannedUnplannedDowntime = async (machineId, period) => {
+    try {
+        const machine = await Machine.findById(machineId);
+        if (!machine) throw new Error('Machine not found');
+
+        const { start, end } = getDateRange(period);
+        const totalMs = end - start;
+
+        const records = await DowntimeRecord.find({
+            machine: machineId,
+            startedAt: { $gte: start, $lte: end },
+            resolvedAt: { $ne: null }
+        });
+
+        let plannedMs = 0;
+        let unplannedMs = 0;
+
+        records.forEach(record => {
+            const durationMs = new Date(record.resolvedAt) - new Date(record.startedAt);
+            if (record.downtimeType === DOWNTIME_TYPES.PLANNED) {
+                plannedMs += durationMs;
+            } else {
+                unplannedMs += durationMs;
+            }
+        });
+
+        const plannedHours = parseFloat((plannedMs / 1000 / 60 / 60).toFixed(2));
+        const unplannedHours = parseFloat((unplannedMs / 1000 / 60 / 60).toFixed(2));
+        const plannedPercentage = parseFloat(((plannedMs / totalMs) * 100).toFixed(2));
+        const unplannedPercentage = parseFloat(((unplannedMs / totalMs) * 100).toFixed(2));
+
+        return {
+            plannedHours,
+            unplannedHours,
+            plannedPercentage,
+            unplannedPercentage,
+            period,
+            machineId
+        };
+
+    } catch (err) {
+        console.error('getPlannedUnplannedDowntime error:', err.message);
+        throw err;
+    }
+};
+
+module.exports = { getTotalDowntime, getCycleCount, getUtilisation, getCuttingTime, getDateRange, getPlannedUnplannedDowntime };

@@ -1,6 +1,7 @@
 const Reading = require('../models/reading.model');
 const Sensor = require('../models/sensor.model');
 const Machine = require('../models/machine.model');
+const DowntimeRecord = require('../models/downtimeRecord.model');
 const { notifyAdminsForDowntime, resolveDowntimeNotification } = require('../services/notification.service');
 
 // Get all readings
@@ -39,8 +40,25 @@ exports.createReading = async (req, res) => {
         const machine = await Machine.findById(machineId);
         if (machine) {
             if (measurement <= machine.downtimeThreshold) {
+                const existingRecord = await DowntimeRecord.findOne({
+                    machine: machineId,
+                    resolvedAt: null
+                });
+
+                if (!existingRecord) {
+                    await DowntimeRecord.create({
+                        machine: machineId,
+                        startedAt: new Date(measuredAt)
+                    });
+                }
+
                 await notifyAdminsForDowntime(machineId, machine.name);
             } else {
+                await DowntimeRecord.findOneAndUpdate(
+                    { machine: machineId, resolvedAt: null },
+                    { resolvedAt: new Date(measuredAt) }
+                );
+                
                 await resolveDowntimeNotification(machineId);
             }
         }

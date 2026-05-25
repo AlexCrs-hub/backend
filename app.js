@@ -10,6 +10,7 @@ const linesRoutes = require('./routes/line.routes');
 const sensorRoutes = require('./routes/sensor.routes');
 const readingRoutes = require('./routes/reading.routes');
 const metricsRoutes = require('./routes/metrics.routes');
+const downtimeRecordRoutes = require('./routes/downtimeRecord.routes');
 const userRoutes = require('./routes/user.routes');
 const connectDB = require('./database/connectDB');
 const dotenv = require('dotenv');
@@ -52,7 +53,7 @@ app.use('/api/sensors', sensorRoutes);
 app.use('/api/readings', readingRoutes);
 app.use('/api/metrics', metricsRoutes);
 app.use('/api/users', userRoutes);
-
+app.use('/api/downtime-records', downtimeRecordRoutes);
 app.use(errorController.get404);
 
 

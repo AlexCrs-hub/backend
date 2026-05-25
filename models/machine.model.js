@@ -18,6 +18,7 @@ const machineSchema = new Schema({
     },
     maxPowerConsumption: { type: Number, required: true }, // max possible power
     downtimeThreshold: {type: Number, required: true},
+    cuttingThreshold: { type: Number, default: null }
 });
 
 module.exports = mongoose.model('Machine', machineSchema);

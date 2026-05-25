@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
+const { USER_ROLES } = require('../utils/enums');
 
 const userSchema = new Schema({
     email: {
@@ -22,8 +23,8 @@ const userSchema = new Schema({
     },
     role: {
         type: String,
-        enum: ['admin', 'operator', 'maintenance'],
-        default: 'maintenance'
+        enum: [USER_ROLES.ADMIN, USER_ROLES.OPERATOR, USER_ROLES.MAINTENANCE],
+        default: USER_ROLES.MAINTENANCE
     },
     lastLogin: {
         type: Date,
