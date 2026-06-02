@@ -18,6 +18,7 @@ const dotenv = require('dotenv');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const fs = require("fs");
+const { checkEscalations } = require('./services/notification.service');
 
 dotenv.config();
 
@@ -58,9 +59,9 @@ app.use('/api/users', userRoutes);
 app.use('/api/downtime-records', downtimeRecordRoutes);
 app.use(errorController.get404);
 
-
 server.listen(PORT, () => {
     connectDB();
+    setInterval(checkEscalations, 60 * 1000);
     console.log(`Server is running on port ${PORT}`);
 });
 

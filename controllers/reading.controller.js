@@ -2,7 +2,7 @@ const Reading = require('../models/reading.model');
 const Sensor = require('../models/sensor.model');
 const Machine = require('../models/machine.model');
 const DowntimeRecord = require('../models/downtimeRecord.model');
-const { notifyAdminsForDowntime, resolveDowntimeNotification } = require('../services/notification.service');
+const { notifyOnDowntime, resolveDowntimeNotification } = require('../services/notification.service');
 
 // Get all readings
 exports.getAllReadings = async (req, res) => {
@@ -52,7 +52,7 @@ exports.createReading = async (req, res) => {
                     });
                 }
 
-                await notifyAdminsForDowntime(machineId, machine.name);
+                await notifyOnDowntime(machineId, machine.name);
             } else {
                 await DowntimeRecord.findOneAndUpdate(
                     { machine: machineId, resolvedAt: null },
