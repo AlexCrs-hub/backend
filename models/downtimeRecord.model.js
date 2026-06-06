@@ -40,3 +40,5 @@ const downtimeRecordSchema = new Schema({
         default: DOWNTIME_REASONS.OTHER
     }
 }, { timestamps: true });
+
+module.exports = mongoose.model('DowntimeRecord', downtimeRecordSchema);

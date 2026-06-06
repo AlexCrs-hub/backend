@@ -17,7 +17,7 @@ const machineSchema = new Schema({
         required: false
     },
     maxPowerConsumption: { type: Number, required: true }, // max possible power
-    downtimeThreshold: {type: Number, required: true},
+    downtimeThreshold: {type: Number, required: false},
     cuttingThreshold: { type: Number, default: null }
 });
 
