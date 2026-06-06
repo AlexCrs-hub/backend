@@ -16,3 +16,5 @@ const workIntervalSchema = new Schema({
         default: null
     }
 }, { timestamps: true });
+
+module.exports = mongoose.model('WorkInterval', workIntervalSchema);

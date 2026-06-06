@@ -2,6 +2,7 @@ const WorkInterval = require('../models/workInterval.model');
 
 exports.start = async (req, res) => {
     try {
+        console.log("WORK INTERVAL STARTED");
         const { machineId } = req.params;
 
         // Check if there's already an open interval
@@ -28,6 +29,7 @@ exports.start = async (req, res) => {
 exports.stop = async (req, res) => {
     try {
         const { machineId } = req.params;
+        console.log("WORK INTERVAL STOPPED");
 
         const interval = await WorkInterval.findOneAndUpdate(
             { machine: machineId, stoppedAt: null },
