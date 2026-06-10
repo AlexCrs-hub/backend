@@ -3,7 +3,8 @@ const NotificationGroup = require('../models/notificationGroup.model');
 exports.getAllGroups = async (req, res) => {
     try {
         const groups = await NotificationGroup.find();
-        res.json(groups);
+        const groupNames = groups.map(g => g.role);
+        res.json(groupNames);
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
