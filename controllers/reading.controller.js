@@ -51,7 +51,7 @@ exports.createReading = async (req, res) => {
                         startedAt: new Date(measuredAt)
                     });
                 }
-
+                console.log(`Reading ${measurement} is below threshold for machine ${machine.name}, sending notification`);
                 await notifyOnDowntime(machineId, machine.name);
             } else {
                 await DowntimeRecord.findOneAndUpdate(

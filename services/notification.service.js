@@ -1,14 +1,16 @@
 const axios = require('axios');
 const NotificationLog = require('../models/notificationLog.model');
 const User = require('../models/user.model');
+const NotificationGroup = require('../models/notificationGroup.model');
+const DowntimeRecord = require('../models/downtimeRecord.model');
 const { USER_ROLES } = require('../utils/enums');
 
 const WHATSAPP_API_URL = `https://graph.facebook.com/v19.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`;
 
 const ESCALATION_INTERVALS = {
     operator: 0,
-    maintenance: 15 * 60 * 1000,  // 15 minutes
-    admin: 30 * 60 * 1000          // 30 minutes
+    maintenance: 15 * 1000,  // 15 minutes
+    admin: 30 * 1000          // 30 minutes
 };
 
 const ESCALATION_ORDER = [USER_ROLES.OPERATOR, USER_ROLES.MAINTENANCE, USER_ROLES.ADMIN];
@@ -34,20 +36,17 @@ const sendWhatsAppMessage = async (phoneNumber, machineName) => {
 };
 
 const sendToRole = async (role, machineName) => {
-    const users = await User.find({
-        role,
-        phoneNumber: { $ne: null }
-    });
+    const group = await NotificationGroup.findOne({ role });
 
-    if (users.length === 0) {
-        console.log(`No ${role}s with phone numbers found`);
+    if (!group || group.phoneNumbers.length === 0) {
+        console.log(`No phone numbers found for role ${role}`);
         return;
     }
-
-    const sendPromises = users.map(user =>
-        sendWhatsAppMessage(user.phoneNumber, machineName)
-            .then(() => console.log(`Notified ${user.email}`))
-            .catch(err => console.error(`Failed to notify ${user.email}:`, err.message))
+    console.log(`Sending notification to numbers: ${group.phoneNumbers.join(', ')} ${role}(s) for machine ${machineName}`);
+    const sendPromises = group.phoneNumbers.map(phoneNumber =>
+        sendWhatsAppMessage(phoneNumber, machineName, role)
+            .then(() => console.log(`Notified ${role} at ${phoneNumber}`))
+            .catch(err => console.error(`Failed to notify ${role} at ${phoneNumber}:`, err.message))
     );
 
     await Promise.allSettled(sendPromises);
@@ -59,6 +58,8 @@ const notifyOnDowntime = async (machineId, machineName) => {
             machine: machineId,
             resolvedAt: null
         });
+
+        console.log(`Checking for existing notification for machine ${machineName}`);
 
         if (existingLog) {
             console.log(`Notification already sent for machine ${machineName}, skipping`);

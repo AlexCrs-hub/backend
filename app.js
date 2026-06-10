@@ -13,6 +13,7 @@ const metricsRoutes = require('./routes/metrics.routes');
 const downtimeRecordRoutes = require('./routes/downtimeRecord.routes');
 const userRoutes = require('./routes/user.routes');
 const workIntervalRoutes = require('./routes/workInterval.routes');
+const notificationGroupRoutes = require('./routes/notificationGroup.routes');
 const connectDB = require('./database/connectDB');
 const dotenv = require('dotenv');
 const cookieParser = require('cookie-parser');
@@ -57,6 +58,7 @@ app.use('/api/metrics', metricsRoutes);
 app.use('/api/work-intervals', workIntervalRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/downtime-records', downtimeRecordRoutes);
+app.use('/api/notification-groups', notificationGroupRoutes);
 app.use(errorController.get404);
 
 server.listen(PORT, () => {
