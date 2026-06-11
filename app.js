@@ -1,3 +1,5 @@
+const dotenv = require('dotenv');
+dotenv.config();
 const bodyParser = require('body-parser');
 const express = require('express');
 const https = require('https');
@@ -15,13 +17,10 @@ const userRoutes = require('./routes/user.routes');
 const workIntervalRoutes = require('./routes/workInterval.routes');
 const notificationGroupRoutes = require('./routes/notificationGroup.routes');
 const connectDB = require('./database/connectDB');
-const dotenv = require('dotenv');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const fs = require("fs");
 const { checkEscalations } = require('./services/notification.service');
-
-dotenv.config();
 
 const PORT = process.env.PORT;
 

@@ -41,11 +41,7 @@ exports.addMachineToLine = async (req, res) => {
 
 exports.addMachine = async (req, res) => {
     try {
-        const { name, max_power, user_id } = req.body;
-
-         if (!user_id) {
-            return res.status(400).json({ error: "User ID is required." });
-        }
+        const { name, max_power } = req.body;
 
         if (!name) {
             return res.status(400).json({ error: "Machine name is required." });
@@ -55,12 +51,12 @@ exports.addMachine = async (req, res) => {
             return res.status(400).json({ error: "Max power consumption is required." });
         }
 
-        const existingMachine = await Machine.findOne({ name, user_id });
+        const existingMachine = await Machine.findOne({ name });
         if (existingMachine) {
-            return res.status(409).json({ error: "A machine with this name already exists for the user." });
+            return res.status(409).json({ error: "A machine with this name already exists." });
         }
 
-        const machine = new Machine({ name, maxPowerConsumption: max_power, userId: user_id });
+        const machine = new Machine({ name, maxPowerConsumption: max_power });
         await machine.save();
 
         res.status(201).json({ message: "Machine added successfully.", machine });
@@ -181,10 +177,10 @@ exports.getUserMachines = async (req, res) => {
     try {
         const userId = req.userId;
 
-        const machines = await Machine.find({ userId });
+        const machines = await Machine.find({});
 
         if (!machines || machines.length === 0) {
-            return res.status(404).json({ message: "The user has no machines." });
+            return res.status(404).json({ message: "No machines found." });
         }
 
         res.status(200).json({

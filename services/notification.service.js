@@ -9,22 +9,23 @@ const WHATSAPP_API_URL = `https://graph.facebook.com/v19.0/${process.env.WHATSAP
 
 const ESCALATION_INTERVALS = {
     operator: 0,
-    maintenance: 15 * 1000,  // 15 minutes
-    admin: 30 * 1000          // 30 minutes
+    maintenance: 15 * 60 * 1000,  // 15 minutes
+    admin: 30 * 60 * 1000          // 30 minutes
 };
 
 const ESCALATION_ORDER = [USER_ROLES.OPERATOR, USER_ROLES.MAINTENANCE, USER_ROLES.ADMIN];
 
 const sendWhatsAppMessage = async (phoneNumber, machineName) => {
-    const message = `⚠️ Alert: Machine "${machineName}" has entered downtime. Please check immediately.`;
-
-    await axios.post(
+    const response = await axios.post(
         WHATSAPP_API_URL,
         {
             messaging_product: 'whatsapp',
-            to: phoneNumber,
-            type: 'text',
-            text: { body: message }
+            to: phoneNumber.replace('+', ''),
+            type: 'template',
+            template: {
+                name: process.env.WHATSAPP_TEMPLATE_NAME || 'hello_world',
+                language: { code: 'en_US' }
+            }
         },
         {
             headers: {
@@ -33,6 +34,7 @@ const sendWhatsAppMessage = async (phoneNumber, machineName) => {
             }
         }
     );
+    // console.log('WhatsApp send result:', JSON.stringify(response.data));
 };
 
 const sendToRole = async (role, machineName) => {
@@ -42,11 +44,11 @@ const sendToRole = async (role, machineName) => {
         console.log(`No phone numbers found for role ${role}`);
         return;
     }
-    console.log(`Sending notification to numbers: ${group.phoneNumbers.join(', ')} ${role}(s) for machine ${machineName}`);
+    // console.log(`Sending notification to numbers: ${group.phoneNumbers.join(', ')} ${role}(s) for machine ${machineName}`);
     const sendPromises = group.phoneNumbers.map(phoneNumber =>
         sendWhatsAppMessage(phoneNumber, machineName, role)
-            .then(() => console.log(`Notified ${role} at ${phoneNumber}`))
-            .catch(err => console.error(`Failed to notify ${role} at ${phoneNumber}:`, err.message))
+            .then(() => console.log(`Notified ${role} at ${phoneNumber.replace('+', '')}`))
+            .catch(err => console.error(`Failed to notify ${role} at ${phoneNumber.replace('+', '')}:`, err.response?.data || err.message))
     );
 
     await Promise.allSettled(sendPromises);

@@ -58,8 +58,6 @@ exports.createReading = async (req, res) => {
                     { machine: machineId, resolvedAt: null },
                     { resolvedAt: new Date(measuredAt) }
                 );
-                
-                await resolveDowntimeNotification(machineId);
             }
         }
 
