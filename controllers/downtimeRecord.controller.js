@@ -8,7 +8,7 @@ exports.updateReason = async (req, res) => {
         const { reason, downtimeType } = req.body;
 
         const record = await DowntimeRecord.findByIdAndUpdate(
-            id,
+            recordId,
             {
                 reason,
                 downtimeType,

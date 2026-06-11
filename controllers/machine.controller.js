@@ -201,33 +201,48 @@ exports.getMachineReport = async (req, res) => {
             return res.status(404).json({ error: "Machine not found." });
         }
 
-        const dates = [];
-        const currentDate = new Date(start);
+        const startDate = new Date(start);
+        startDate.setHours(0, 0, 0, 0);
         const endDate = new Date(end);
+        endDate.setHours(23, 59, 59, 999);
 
-        while (currentDate <= endDate) {
-            dates.push(new Date(currentDate).toISOString().split("T")[0]);
-            currentDate.setDate(currentDate.getDate() + 1);
+        const Sensor = require('../models/sensor.model');
+        const Reading = require('../models/reading.model');
+
+        const sensors = await Sensor.find({ machine: id });
+        const sensorIds = sensors.map(s => s._id);
+
+        const readings = await Reading.find({
+            sensor: { $in: sensorIds },
+            measuredAt: { $gte: startDate, $lte: endDate }
+        });
+
+        // Build a map of date string -> total consumption
+        const consumptionByDay = {};
+        const current = new Date(startDate);
+        while (current <= endDate) {
+            consumptionByDay[current.toISOString().split('T')[0]] = 0;
+            current.setDate(current.getDate() + 1);
         }
 
-        const mockData = dates.map(date => ({
-            "Date": date,
-            'Consumption (kW)': Math.floor(Math.random() * 100) + 1,
+        for (const reading of readings) {
+            const day = new Date(reading.measuredAt).toISOString().split('T')[0];
+            if (consumptionByDay[day] !== undefined) {
+                consumptionByDay[day] += reading.measurement;
+            }
+        }
+
+        const rows = Object.entries(consumptionByDay).map(([date, consumption]) => ({
+            'Date': date,
+            'Consumption (kW)': Math.round(consumption * 100) / 100
         }));
 
-        mockData.push({
-            "Date": '',
-            'Consumption (kW)': '',
-        });
+        const totalConsumption = rows.reduce((sum, row) => sum + row['Consumption (kW)'], 0);
 
-        const totalConsumption = mockData.reduce((sum, entry) => sum + entry['Consumption (kW)'], 0);
+        rows.push({ 'Date': '', 'Consumption (kW)': '' });
+        rows.push({ 'Date': 'Total', 'Consumption (kW)': Math.round(totalConsumption * 100) / 100 });
 
-        mockData.push({
-            "Date": 'Total',
-            'Consumption (kW)': totalConsumption,
-        });
-
-        const csvData = await converter.json2csv(mockData, { emptyFieldValue: '' });
+        const csvData = await converter.json2csv(rows, { emptyFieldValue: '' });
 
         res.setHeader("Content-Type", "text/csv");
         res.setHeader(
