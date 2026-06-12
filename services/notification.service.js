@@ -54,17 +54,15 @@ const sendToRole = async (role, machineName) => {
     await Promise.allSettled(sendPromises);
 };
 
-const notifyOnDowntime = async (machineId, machineName) => {
+const notifyOnDowntime = async (machineId, machineName, downtimeRecordId) => {
     try {
         const existingLog = await NotificationLog.findOne({
-            machine: machineId,
+            downtimeRecord: downtimeRecordId,
             resolvedAt: null
         });
 
-        console.log(`Checking for existing notification for machine ${machineName}`);
-
         if (existingLog) {
-            console.log(`Notification already sent for machine ${machineName}, skipping`);
+            console.log(`Notification already sent for this downtime period, skipping`);
             return;
         }
 
@@ -72,6 +70,7 @@ const notifyOnDowntime = async (machineId, machineName) => {
 
         await NotificationLog.create({
             machine: machineId,
+            downtimeRecord: downtimeRecordId,
             escalationLevel: USER_ROLES.OPERATOR,
             escalatedAt: new Date()
         });
@@ -101,18 +100,13 @@ const checkEscalations = async () => {
         const openLogs = await NotificationLog.find({
             resolvedAt: null,
             escalationLevel: { $in: [USER_ROLES.OPERATOR, USER_ROLES.MAINTENANCE] }
-        }).populate('machine');
+        }).populate('machine').populate('downtimeRecord');
 
         for (const log of openLogs) {
             // Check if downtime reason has been recorded
-            const downtimeRecord = await DowntimeRecord.findOne({
-                machine: log.machine._id,
-                resolvedAt: { $ne: null },
-                reasonRecorded: true,
-                startedAt: { $gte: log.sentAt }
-            });
+            const downtimeRecord = log.downtimeRecord;
 
-            if (downtimeRecord) {
+            if (downtimeRecord?.reasonRecorded) {
                 // Reason recorded, stop escalation
                 await NotificationLog.findByIdAndUpdate(log._id, { resolvedAt: new Date() });
                 console.log(`Escalation stopped for machine ${log.machine.name} — reason recorded`);

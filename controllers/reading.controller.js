@@ -46,13 +46,13 @@ exports.createReading = async (req, res) => {
                 });
 
                 if (!existingRecord) {
-                    await DowntimeRecord.create({
+                    const newRecord = await DowntimeRecord.create({
                         machine: machineId,
                         startedAt: new Date(measuredAt)
                     });
+                    console.log(`New downtime started for machine ${machine.name}, sending notification`);
+                    await notifyOnDowntime(machineId, machine.name, newRecord._id);
                 }
-                console.log(`Reading ${measurement} is below threshold for machine ${machine.name}, sending notification`);
-                await notifyOnDowntime(machineId, machine.name);
             } else {
                 await DowntimeRecord.findOneAndUpdate(
                     { machine: machineId, resolvedAt: null },

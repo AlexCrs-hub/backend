@@ -8,6 +8,11 @@ const notificationLogSchema = new Schema({
         ref: 'Machine',
         required: true
     },
+    downtimeRecord: {
+        type: Schema.Types.ObjectId,
+        ref: 'DowntimeRecord',
+        required: true
+    },
     sentAt: {
         type: Date,
         default: Date.now
