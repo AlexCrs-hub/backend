@@ -9,11 +9,10 @@ const WHATSAPP_API_URL = `https://graph.facebook.com/v19.0/${process.env.WHATSAP
 
 const ESCALATION_INTERVALS = {
     operator: 0,
-    maintenance: 15 * 60 * 1000,  // 15 minutes
-    admin: 30 * 60 * 1000          // 30 minutes
+    admin: 15 * 60 * 1000  // 15 minutes
 };
 
-const ESCALATION_ORDER = [USER_ROLES.OPERATOR, USER_ROLES.MAINTENANCE, USER_ROLES.ADMIN];
+const ESCALATION_ORDER = [USER_ROLES.OPERATOR, USER_ROLES.ADMIN];
 
 const sendWhatsAppMessage = async (phoneNumber, machineName) => {
     const response = await axios.post(
@@ -99,17 +98,13 @@ const checkEscalations = async () => {
 
         const openLogs = await NotificationLog.find({
             resolvedAt: null,
-            escalationLevel: { $in: [USER_ROLES.OPERATOR, USER_ROLES.MAINTENANCE] }
+            escalationLevel: { $in: [USER_ROLES.OPERATOR] }
         }).populate('machine').populate('downtimeRecord');
 
         for (const log of openLogs) {
-            // Check if downtime reason has been recorded
-            const downtimeRecord = log.downtimeRecord;
-
-            if (downtimeRecord?.reasonRecorded) {
-                // Reason recorded, stop escalation
+            if (log.downtimeRecord?.reasonRecorded) {
                 await NotificationLog.findByIdAndUpdate(log._id, { resolvedAt: new Date() });
-                console.log(`Escalation stopped for machine ${log.machine.name} — reason recorded`);
+                console.log(`Notification resolved for machine ${log.machine.name} — reason recorded`);
                 continue;
             }
 
@@ -118,7 +113,7 @@ const checkEscalations = async () => {
             const intervalForNext = ESCALATION_INTERVALS[nextLevel];
             const timeSinceEscalation = now - new Date(log.escalatedAt).getTime();
 
-            if (timeSinceEscalation >= intervalForNext) {
+            if (nextLevel && timeSinceEscalation >= intervalForNext) {
                 await sendToRole(nextLevel, log.machine.name);
 
                 await NotificationLog.findByIdAndUpdate(log._id, {
@@ -137,5 +132,6 @@ const checkEscalations = async () => {
 module.exports = {
     notifyOnDowntime,
     resolveDowntimeNotification,
-    checkEscalations
+    checkEscalations,
+    sendToRole
 };

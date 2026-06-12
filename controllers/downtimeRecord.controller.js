@@ -1,6 +1,8 @@
 const DowntimeRecord = require('../models/downtimeRecord.model');
+const Machine = require('../models/machine.model');
 const { getDateRange } = require('../services/metrics.service');
-const { DOWNTIME_REASONS, DOWNTIME_TYPES } = require('../utils/enums');
+const { DOWNTIME_REASONS, DOWNTIME_TYPES, USER_ROLES } = require('../utils/enums');
+const { sendToRole } = require('../services/notification.service');
 
 exports.updateReason = async (req, res) => {
     try{
@@ -20,6 +22,13 @@ exports.updateReason = async (req, res) => {
         if(!record)
         {
             return res.status(404).json({ message: 'Downtime record not found' });
+        }
+
+        if (reason === DOWNTIME_REASONS.MAINTENANCE) {
+            const machine = await Machine.findById(record.machine);
+            if (machine) {
+                await sendToRole(USER_ROLES.MAINTENANCE, machine.name);
+            }
         }
 
         res.json(record);
