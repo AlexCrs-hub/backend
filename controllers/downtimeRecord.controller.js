@@ -6,11 +6,11 @@ const { sendToRole } = require('../services/notification.service');
 
 exports.updateReason = async (req, res) => {
     try{
-        const { recordId } = req.params;
+        const { id } = req.params;
         const { reason, downtimeType } = req.body;
 
         const record = await DowntimeRecord.findByIdAndUpdate(
-            recordId,
+            id,
             {
                 reason,
                 downtimeType,
