@@ -2,6 +2,7 @@ const Reading = require('../models/reading.model');
 const Sensor = require('../models/sensor.model');
 const Machine = require('../models/machine.model');
 const ThresholdRecord = require('../models/thresholdRecord.model');
+const DowntimeRecord = require('../models/downtimeRecord.model');
 const { PERIODS, DOWNTIME_TYPES } = require('../utils/enums');
 
 const getDateRange = (period) => {
