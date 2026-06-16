@@ -56,10 +56,11 @@ const countPeaks = (smoothed, min, max) => {
 
 const getCycleCount = async (machineId, period) => {
     try{
-        const machine = await Machine.findById(machineId);
+        const [machine, sensor] = await Promise.all([
+            Machine.findById(machineId),
+            Sensor.findOne({ machine: machineId, unit: 'kW' })
+        ]);
         if(!machine) throw new Error('Machine not found');
-        
-        const sensor = await Sensor.findOne({ machine: machineId, unit: 'kW' });
         if(!sensor) throw new Error('Power sensor not found for this machine');
 
         const { start, end } = getDateRange(period);
@@ -86,10 +87,11 @@ const getCycleCount = async (machineId, period) => {
 
 const getTotalDowntime = async (machineId, period) => {
     try {
-        const machine = await Machine.findById(machineId);
+        const [machine, sensor] = await Promise.all([
+            Machine.findById(machineId),
+            Sensor.findOne({ machine: machineId, unit: 'kW' })
+        ]);
         if (!machine) throw new Error('Machine not found');
-
-        const sensor = await Sensor.findOne({ machine: machineId, unit: 'kW' });
         if (!sensor) throw new Error('No kW sensor found for this machine');
 
         const { start, end } = getDateRange(period);
@@ -137,10 +139,11 @@ const getTotalDowntime = async (machineId, period) => {
 
 const getUtilisation = async (machineId, period) => {
     try {
-        const machine = await Machine.findById(machineId);
+        const [machine, sensor] = await Promise.all([
+            Machine.findById(machineId),
+            Sensor.findOne({ machine: machineId, unit: 'kW' })
+        ]);
         if (!machine) throw new Error('Machine not found');
-
-        const sensor = await Sensor.findOne({ machine: machineId, unit: 'kW' });
         if (!sensor) throw new Error('No kW sensor found for this machine');
 
         const { start, end } = getDateRange(period);
@@ -220,10 +223,11 @@ const analyzeSignal = (values, min, max, numBins = 50) => {
 
 const getCuttingTime = async (machineId, period) => {
     try{
-        const machine = await Machine.findById(machineId);
+        const [machine, sensor] = await Promise.all([
+            Machine.findById(machineId),
+            Sensor.findOne({ machine: machineId, unit: 'kW' })
+        ]);
         if(!machine) throw new Error('Machine not found');
-
-        const sensor = await Sensor.findOne({ machine: machineId, unit: 'kW' });
         if(!sensor) throw new Error('Power sensor not found for this machine');
 
         const {start, end} = getDateRange(period);
