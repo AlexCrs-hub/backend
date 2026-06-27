@@ -17,6 +17,8 @@ const readingSchema = new mongoose.Schema({
     }
 });
 
-readingSchema.index({ sensor: 1, measuredAt: 1 });
+readingSchema.index({ sensor: 1, measuredAt: -1 });
+readingSchema.index({ measuredAt: -1 });
+readingSchema.index({ sensor: 1, measuredAt: 1 }, { unique: true });
 
 module.exports = mongoose.model('Reading', readingSchema);

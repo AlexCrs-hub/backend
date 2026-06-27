@@ -41,4 +41,7 @@ const downtimeRecordSchema = new Schema({
     }
 }, { timestamps: true });
 
+downtimeRecordSchema.index({ machine: 1, resolvedAt: 1 });
+downtimeRecordSchema.index({ machine: 1, startedAt: -1 });
+
 module.exports = mongoose.model('DowntimeRecord', downtimeRecordSchema);
