@@ -3,6 +3,7 @@ const Sensor = require('../models/sensor.model');
 const Machine = require('../models/machine.model');
 const ThresholdRecord = require('../models/thresholdRecord.model');
 const DowntimeRecord = require('../models/downtimeRecord.model');
+const MachineMetricBucket = require("../models/machineMetricBucket.model");
 const { PERIODS, DOWNTIME_TYPES } = require('../utils/enums');
 
 const getDateRange = (period) => {
@@ -350,4 +351,43 @@ const getPlannedUnplannedDowntime = async (machineId, period) => {
     }
 };
 
-module.exports = { getTotalDowntime, getCycleCount, getUtilisation, getCuttingTime, getDateRange, getPlannedUnplannedDowntime };
+
+const getMetricSummary = async (machineId, period) => {
+  const { start, end } = getDateRange(period);
+
+  const buckets = await MachineMetricBucket.find({
+    machine: machineId,
+    bucketStart: { $gte: start, $lte: end },
+  }).sort({ bucketStart: 1 });
+
+  const sampleCount = buckets.reduce((sum, b) => sum + b.sampleCount, 0);
+  const sumPowerKw = buckets.reduce((sum, b) => sum + b.sumPowerKw, 0);
+  const activeMs = buckets.reduce((sum, b) => sum + b.activeMs, 0);
+  const idleMs = buckets.reduce((sum, b) => sum + b.idleMs, 0);
+  const downtimeMs = buckets.reduce((sum, b) => sum + b.downtimeMs, 0);
+  const cycles = buckets.reduce((sum, b) => sum + b.cycles, 0);
+  const energyKwh = buckets.reduce((sum, b) => sum + b.energyKwh, 0);
+
+  const totalMs = end - start;
+
+  return {
+    machineId,
+    period,
+    avgPowerKw: sampleCount > 0 ? sumPowerKw / sampleCount : 0,
+    energyKwh,
+    utilizationPercentage: totalMs > 0 ? (activeMs / totalMs) * 100 : 0,
+    downtimeHours: downtimeMs / 1000 / 60 / 60,
+    idleHours: idleMs / 1000 / 60 / 60,
+    cycles,
+  };
+};
+
+module.exports = {
+  getTotalDowntime,
+  getCycleCount,
+  getUtilisation,
+  getCuttingTime,
+  getDateRange,
+  getPlannedUnplannedDowntime,
+  getMetricSummary,
+};

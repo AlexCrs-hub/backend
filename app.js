@@ -16,6 +16,9 @@ const downtimeRecordRoutes = require('./routes/downtimeRecord.routes');
 const userRoutes = require('./routes/user.routes');
 const workIntervalRoutes = require('./routes/workInterval.routes');
 const notificationGroupRoutes = require('./routes/notificationGroup.routes');
+const telemetryRoutes = require("./routes/telemetry.routes");
+const realtimeRoutes = require("./routes/realtime.routes");
+const { startHealthMonitor } = require("./services/healthMonitor.service");
 const connectDB = require('./database/connectDB');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
@@ -35,12 +38,18 @@ const app = express();
 // For development, use HTTP server
 const server = createServer(app);
 
-app.use(cors({
-    origin: ['http://localhost:5173', 'https://predictech.org', 'https://www.predictech.org'],
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true
-}));
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "https://predictech.org",
+      "https://www.predictech.org",
+    ],
+    methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
+    allowedHeaders: ["Content-Type", "Authorization", "x-api-key"],
+    credentials: true,
+  }),
+);
 
 //Comment this when using https
 app.options('*', cors());
@@ -58,11 +67,13 @@ app.use('/api/work-intervals', workIntervalRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/downtime-records', downtimeRecordRoutes);
 app.use('/api/notification-groups', notificationGroupRoutes);
+app.use('/api/telemetry', telemetryRoutes);
+app.use('/api/realtime', realtimeRoutes);
 app.use(errorController.get404);
 
 server.listen(PORT, () => {
-    connectDB();
-    setInterval(checkEscalations, 60 * 1000);
-    console.log(`Server is running on port ${PORT}`);
+  connectDB();
+  setInterval(checkEscalations, 60 * 1000);
+  startHealthMonitor();
+  console.log(`Server is running on port ${PORT}`);
 });
-

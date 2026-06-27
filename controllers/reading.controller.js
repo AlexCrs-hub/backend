@@ -4,6 +4,7 @@ const Machine = require('../models/machine.model');
 const DowntimeRecord = require('../models/downtimeRecord.model');
 const { notifyOnDowntime, resolveDowntimeNotification } = require('../services/notification.service');
 
+// FIXME: Deprecated
 // Get all readings
 exports.getAllReadings = async (req, res) => {
     try {
@@ -14,6 +15,7 @@ exports.getAllReadings = async (req, res) => {
     }
 };
 
+// Java should no longer call this.
 // Create a new reading
 exports.createReading = async (req, res) => {
     const machineId = req.params.machineId;
@@ -67,6 +69,7 @@ exports.createReading = async (req, res) => {
     }
 };
 
+// FIXME: Deprecated
 exports.getReadingsLast24Hours = async (req, res) => {
     try {
         const sensorId = req.params.sensorId;
@@ -81,6 +84,7 @@ exports.getReadingsLast24Hours = async (req, res) => {
     }
 };
 
+// FIXME: Deprecated
 // Get all readings for a specific sensor
 exports.getReadingsBySensor = async (req, res) => {
     try {
@@ -92,6 +96,12 @@ exports.getReadingsBySensor = async (req, res) => {
     }
 };
 
+/**
+ * 
+ * the below method currently incorrectly sums kW values.
+
+FIXME!: Replace the daily sum logic with kWh integration later, or this needs to be deprecated and use metric buckets instead
+ */
 exports.getDailyConsumptionLast7Days = async (req, res) => {
     try {
         const sensorId = req.params.sensorId;
