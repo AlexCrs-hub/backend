@@ -17,4 +17,11 @@ router.get(
   metricsController.getSummary,
 );
 
+// downsampled power time-series for scrollable historical charts
+router.get(
+  "/timeseries/:machineId",
+  isAuth.verifyToken,
+  metricsController.getTimeSeries,
+);
+
 module.exports = router;

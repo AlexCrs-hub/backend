@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Reading = require('../models/reading.model');
 const Sensor = require('../models/sensor.model');
 const Machine = require('../models/machine.model');
@@ -5,6 +6,8 @@ const ThresholdRecord = require('../models/thresholdRecord.model');
 const DowntimeRecord = require('../models/downtimeRecord.model');
 const MachineMetricBucket = require("../models/machineMetricBucket.model");
 const { PERIODS, DOWNTIME_TYPES } = require('../utils/enums');
+
+const GRANULARITY_MS = { minute: 60000, hour: 3600000, day: 86400000 };
 
 const getDateRange = (period) => {
     const now = new Date();
@@ -382,6 +385,59 @@ const getMetricSummary = async (machineId, period) => {
   };
 };
 
+/**
+ * Downsampled power time-series from the per-minute metric buckets.
+ * Rolls minute buckets up to the requested granularity (minute|hour|day)
+ * so long ranges stay bounded. Returns avg + min/max per interval so the
+ * client can draw an envelope band around the average line.
+ */
+const getPowerTimeSeries = async (machineId, { from, to, granularity }) => {
+  if (!mongoose.Types.ObjectId.isValid(machineId)) {
+    throw new Error('Invalid machineId');
+  }
+
+  const unit = GRANULARITY_MS[granularity] ? granularity : 'minute';
+  const windowMs = GRANULARITY_MS[unit];
+
+  const rows = await MachineMetricBucket.aggregate([
+    {
+      $match: {
+        machine: new mongoose.Types.ObjectId(machineId),
+        bucketStart: { $gte: from, $lte: to },
+      },
+    },
+    {
+      $group: {
+        _id: { $dateTrunc: { date: '$bucketStart', unit } },
+        sampleCount: { $sum: '$sampleCount' },
+        sumPowerKw: { $sum: '$sumPowerKw' },
+        minPowerKw: { $min: '$minPowerKw' },
+        maxPowerKw: { $max: '$maxPowerKw' },
+        activeMs: { $sum: '$activeMs' },
+      },
+    },
+    { $sort: { _id: 1 } },
+  ]);
+
+  const points = rows.map((r) => ({
+    t: r._id.getTime(),
+    avgPowerKw: r.sampleCount > 0 ? parseFloat((r.sumPowerKw / r.sampleCount).toFixed(3)) : 0,
+    minPowerKw: r.minPowerKw,
+    maxPowerKw: r.maxPowerKw,
+    sampleCount: r.sampleCount,
+    utilizationPct: parseFloat(((r.activeMs / windowMs) * 100).toFixed(2)),
+  }));
+
+  return {
+    machineId,
+    from,
+    to,
+    granularity: unit,
+    count: points.length,
+    points,
+  };
+};
+
 module.exports = {
   getTotalDowntime,
   getCycleCount,
@@ -390,4 +446,5 @@ module.exports = {
   getDateRange,
   getPlannedUnplannedDowntime,
   getMetricSummary,
+  getPowerTimeSeries,
 };

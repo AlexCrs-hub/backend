@@ -1,8 +1,14 @@
+const mongoose = require('mongoose');
 const Reading = require('../models/reading.model');
 const Sensor = require('../models/sensor.model');
 const Machine = require('../models/machine.model');
 const DowntimeRecord = require('../models/downtimeRecord.model');
 const { notifyOnDowntime, resolveDowntimeNotification } = require('../services/notification.service');
+
+const DEFAULT_WINDOW_LIMIT = 2000;
+const MAX_WINDOW_LIMIT = 5000;
+// Server-side downsample cap for the 24h endpoint (was returning every raw point).
+const MAX_LAST24H_POINTS = 500;
 
 // FIXME: Deprecated
 // Get all readings
@@ -69,14 +75,40 @@ exports.createReading = async (req, res) => {
     }
 };
 
-// FIXME: Deprecated
+// Returns the last 24h of readings for a sensor, downsampled server-side to at
+// most MAX_LAST24H_POINTS evenly-distributed points. Response shape is unchanged
+// (an array of { measuredAt, measurement }) so existing clients keep working —
+// they just receive far fewer points, which is the bottleneck on load.
 exports.getReadingsLast24Hours = async (req, res) => {
     try {
         const sensorId = req.params.sensorId;
+        if (!mongoose.Types.ObjectId.isValid(sensorId)) {
+            return res.status(400).json({ message: 'Invalid sensorId' });
+        }
         const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-        const readings = await Reading.find({ sensor: sensorId, measuredAt: { $gte: since } })
-            .sort({ measuredAt: 1 });
+        const readings = await Reading.aggregate([
+            {
+                $match: {
+                    sensor: new mongoose.Types.ObjectId(sensorId),
+                    measuredAt: { $gte: since },
+                },
+            },
+            {
+                // Distribute readings across up to N time-ordered buckets and
+                // average each bucket — cheap, indexed, and bounded payload.
+                $bucketAuto: {
+                    groupBy: '$measuredAt',
+                    buckets: MAX_LAST24H_POINTS,
+                    output: {
+                        measuredAt: { $min: '$measuredAt' },
+                        measurement: { $avg: '$measurement' },
+                    },
+                },
+            },
+            { $sort: { measuredAt: 1 } },
+            { $project: { _id: 0, measuredAt: 1, measurement: 1 } },
+        ]);
 
         res.json(readings);
     } catch (err) {
@@ -150,6 +182,86 @@ exports.getDailyConsumptionLast7Days = async (req, res) => {
         });
 
         res.json(kwData);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+/**
+ * Windowed raw readings for a single sensor.
+ * GET /api/readings/window?sensorId=&from=&to=&limit=&order=
+ *
+ * Returns full-fidelity points for a bounded time window (zoomed-in chart view).
+ * If the window contains more points than `limit`, `truncated` is true — the
+ * client should switch to the aggregated /metrics/timeseries endpoint instead.
+ */
+exports.getReadingsWindow = async (req, res) => {
+    try {
+        const { sensorId, from, to } = req.query;
+
+        if (!sensorId) {
+            return res.status(400).json({ message: "Query parameter 'sensorId' is required" });
+        }
+
+        const sensor = await Sensor.findById(sensorId);
+        if (!sensor) {
+            return res.status(404).json({ message: 'Sensor not found' });
+        }
+
+        const query = { sensor: sensorId };
+        const range = {};
+
+        if (from !== undefined) {
+            const fromDate = new Date(from);
+            if (Number.isNaN(fromDate.getTime())) {
+                return res.status(400).json({ message: "Invalid 'from' timestamp" });
+            }
+            range.$gte = fromDate;
+        }
+        if (to !== undefined) {
+            const toDate = new Date(to);
+            if (Number.isNaN(toDate.getTime())) {
+                return res.status(400).json({ message: "Invalid 'to' timestamp" });
+            }
+            range.$lte = toDate;
+        }
+        if (Object.keys(range).length > 0) {
+            query.measuredAt = range;
+        }
+
+        const order = req.query.order === 'desc' ? -1 : 1;
+
+        let limit = parseInt(req.query.limit, 10);
+        if (Number.isNaN(limit) || limit <= 0) {
+            limit = DEFAULT_WINDOW_LIMIT;
+        }
+        limit = Math.min(limit, MAX_WINDOW_LIMIT);
+
+        // Fetch one extra to detect truncation without a separate count query.
+        const docs = await Reading.find(query)
+            .sort({ measuredAt: order })
+            .limit(limit + 1)
+            .lean();
+
+        const truncated = docs.length > limit;
+        const sliced = truncated ? docs.slice(0, limit) : docs;
+
+        const points = sliced.map(r => ({
+            t: new Date(r.measuredAt).getTime(),
+            v: r.measurement
+        }));
+
+        res.json({
+            sensorId,
+            machineId: sensor.machine,
+            unit: sensor.unit,
+            from: from || null,
+            to: to || null,
+            order: order === 1 ? 'asc' : 'desc',
+            count: points.length,
+            truncated,
+            points
+        });
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
