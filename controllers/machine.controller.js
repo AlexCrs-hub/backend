@@ -41,7 +41,7 @@ exports.addMachineToLine = async (req, res) => {
 
 exports.addMachine = async (req, res) => {
     try {
-        const { name, max_power } = req.body;
+        const { name, max_power, mqttName } = req.body;
 
         if (!name) {
             return res.status(400).json({ error: "Machine name is required." });
@@ -51,12 +51,18 @@ exports.addMachine = async (req, res) => {
             return res.status(400).json({ error: "Max power consumption is required." });
         }
 
-        const existingMachine = await Machine.findOne({ name });
+        // Hardware/MQTT identifier used to match incoming measurements.
+        // Defaults to the display name if not supplied (backward compatible).
+        const resolvedMqttName = mqttName || name;
+
+        const existingMachine = await Machine.findOne({
+            $or: [{ name }, { mqttName: resolvedMqttName }],
+        });
         if (existingMachine) {
             return res.status(409).json({ error: "A machine with this name already exists." });
         }
 
-        const machine = new Machine({ name, maxPowerConsumption: max_power });
+        const machine = new Machine({ name, mqttName: resolvedMqttName, maxPowerConsumption: max_power });
         await machine.save();
 
         res.status(201).json({ message: "Machine added successfully.", machine });
@@ -111,11 +117,13 @@ exports.getMachineById = async (req, res) => {
 };
 
 exports.getMachineByName = async (req, res) => {
-    
+
     try {
         const { name } = req.params;
-        const machine = await Machine.findOne({ name });
-    
+        // `name` here is the hardware/MQTT identifier — match mqttName first,
+        // falling back to the display name for legacy machines.
+        const machine = await Machine.findOne({ $or: [{ mqttName: name }, { name }] });
+
         if (!machine) {
             return res.status(404).json({ error: "Machine not found." });
         }

@@ -42,6 +42,38 @@ function getBucketStart(date) {
   return d;
 }
 
+/**
+ * Resolves the machine for an incoming MQTT name, matching on `mqttName` first
+ * and falling back to legacy `name` during rollout. If it's an unknown device,
+ * the machine is auto-provisioned (name defaults to the hardware name; an admin
+ * can rename it later via PUT /api/machines/:id). Handles the race where two
+ * concurrent batches try to create the same new machine.
+ */
+async function resolveOrCreateMachine(machineName) {
+  let machine = await Machine.findOne({
+    $or: [{ mqttName: machineName }, { name: machineName }],
+  });
+
+  if (machine) {
+    // Backfill mqttName on legacy machines matched by name.
+    if (!machine.mqttName) {
+      machine.mqttName = machineName;
+      await machine.save();
+    }
+    return machine;
+  }
+
+  try {
+    return await Machine.create({ mqttName: machineName, name: machineName });
+  } catch (err) {
+    // Duplicate key => another request created it first; re-fetch.
+    if (err && err.code === 11000) {
+      return Machine.findOne({ mqttName: machineName });
+    }
+    throw err;
+  }
+}
+
 exports.ingestBatch = async (req, res) => {
     try {
       
@@ -64,12 +96,9 @@ exports.ingestBatch = async (req, res) => {
       return res.status(400).json({ message: "Invalid measuredAt timestamp" });
     }
       
-    const machine = await Machine.findOne({ name: machineName });
-
+    const machine = await resolveOrCreateMachine(machineName);
     if (!machine) {
-      return res
-        .status(404)
-        .json({ message: `Machine not found: ${machineName}` });
+      return res.status(500).json({ message: `Could not resolve machine: ${machineName}` });
     }
 
     const normalizedReadings = readings
