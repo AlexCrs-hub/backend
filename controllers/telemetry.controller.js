@@ -19,7 +19,7 @@ function normalizeSensorName(name) {
 function inferSensorRole(name) {
   const n = normalizeSensorName(name);
 
-  if (n === "power" || n === "kw" || n.includes("power")) return "power";
+  if (n === "power" || n === "kw" || n.includes("power") || n === "sensor value") return "power";
   if (n.includes("temp")) return "temperature";
   if (n.includes("vibration")) return "vibration";
 
@@ -129,6 +129,25 @@ exports.ingestBatch = async (req, res) => {
     const sensorByName = new Map(
       existingSensors.map((sensor) => [sensor.normalizedName, sensor]),
     );
+
+    // Fix any existing sensors whose role was saved incorrectly (e.g. "generic" → "power")
+    const staleRoleSensors = existingSensors.filter(
+      (s) => s.role !== inferSensorRole(s.name),
+    );
+    if (staleRoleSensors.length > 0) {
+      await Sensor.bulkWrite(
+        staleRoleSensors.map((s) => ({
+          updateOne: {
+            filter: { _id: s._id },
+            update: { $set: { role: inferSensorRole(s.name), unit: inferSensorUnit(s.name) } },
+          },
+        })),
+      );
+      for (const s of staleRoleSensors) {
+        s.role = inferSensorRole(s.name);
+        s.unit = inferSensorUnit(s.name);
+      }
+    }
 
     const missingSensors = [
       ...new Map(

@@ -32,7 +32,7 @@ exports.signup = async (req, res) => {
 
         await user.save();
 
-        generateTokenAndSetCookie(res, user._id);
+        generateTokenAndSetCookie(req, res, user._id);
 
         return res.status(201).json({
             success: true, 
@@ -93,7 +93,7 @@ exports.login = async (req, res) => {
             return res.status(400).json({success: false, message: 'Invalid email or password.' });
         }
 
-        generateTokenAndSetCookie(res, user._id, user.role);
+        generateTokenAndSetCookie(req, res, user._id, user.role);
 
         user.lastLogin = Date.now();
         await user.save();
